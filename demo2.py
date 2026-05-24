@@ -47,6 +47,7 @@ def calculate_deconv_score(pred, gt):
     
     # 按照 0.7 和 0.3 的权重融合
     # combined_error = (0.7 * mae) + (0.3 * max_error)
+    # 考虑cosine
     return torch.clamp((1 - mae), 0, 1)
 
 def RefreshPrototype(model_list, dataloder, bank):
@@ -103,15 +104,10 @@ def get_cos_sim(feat,bank_feat):
 
         return sim_matrix
     
-def compute_alignment_loss(feat, label, bank_feat, bank_label, T=0.1):
+def compute_alignment_loss(feat, label, bank_feat, bank_label):
 
-    s_feat = get_cos_sim(feat, bank_feat) / T
-    s_label = get_cos_sim(label, bank_label) / T
-
-    # 转化为概率分布：每个样本更像仓库里的哪几个？
-    # 使用 KL 散度，这比 MSE 柔和得多，不容易带偏主任务
-    # p_feat = F.log_softmax(s_feat, dim=1)
-    # p_label = F.softmax(s_label, dim=1)
+    s_feat = get_cos_sim(feat, bank_feat)
+    s_label = get_cos_sim(label, bank_label)
 
     loss = F.mse_loss(s_feat, s_label.detach())
     return loss
@@ -256,7 +252,7 @@ class demo2(object):
                 if epoch < 5:
                     alpha = 0.0
                 else:
-                    alpha = 0.05 
+                    alpha = 0.1 
 
                 loss_total = pred_loss + alpha * loss_align
 
